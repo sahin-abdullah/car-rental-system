@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   app:
     build:
@@ -12,13 +10,18 @@ services:
       - SPRING_DATASOURCE_USERNAME=rental_user
       - SPRING_DATASOURCE_PASSWORD=rental_pass
       - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+      - SPRING_REDIS_HOST=redis
+      - SPRING_REDIS_PORT=6379
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - rental-network
 
   db:
-    image: postgres:16
+    image: postgis/postgis:16-3.4
     container_name: rental_postgres
     environment:
       - POSTGRES_DB=rentaldb
@@ -28,6 +31,7 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./init-postgis.sql:/docker-entrypoint-initdb.d/init-postgis.sql 
     networks:
       - rental-network
     healthcheck:
@@ -36,8 +40,25 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7-alpine
+    container_name: rental_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - rental-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    command: redis-server --appendonly yes
+
 volumes:
   postgres_data:
+  redis_data:
 
 networks:
   rental-network:
