@@ -9,9 +9,11 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -25,7 +27,7 @@ class InventorySearchController {
         this.service = service;
     }
 
-    @Operation(summary = "Search available cars", description = "Search for available cars with optional filters. Can search by address (finds nearby branches) or by specific branch.")
+    @Operation(summary = "Search available cars", description = "Search for available cars with optional filters. Can search by address (finds nearby branches) or by specific branch. Supports date-aware availability checking.")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Successfully retrieved cars"),
         @ApiResponse(responseCode = "400", description = "Invalid parameters")
@@ -37,14 +39,21 @@ class InventorySearchController {
             @Parameter(description = "Car type filter") @RequestParam(required = false) CarType type,  
             @Parameter(description = "Car make filter (e.g., 'Toyota')") @RequestParam(required = false) String make,   
             @Parameter(description = "Car year filter") @RequestParam(required = false) Integer year,  
+            @Parameter(description = "Pickup date (yyyy-MM-dd) - for date-aware availability") @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate pickupDate,
+            @Parameter(description = "Return date (yyyy-MM-dd) - for date-aware availability") @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate returnDate,
             @Parameter(description = "Page number (0-indexed)") @RequestParam(defaultValue = "0") int page,
             @Parameter(description = "Page size") @RequestParam(defaultValue = "10") int size,
             @Parameter(description = "Sort by field") @RequestParam(defaultValue = "id") String sortBy,
             @Parameter(description = "Sort direction (asc/desc)") @RequestParam(defaultValue = "asc") String direction
     ) {
+        // Validate date range if both dates are provided
+        if (pickupDate != null && returnDate != null && !returnDate.isAfter(pickupDate)) {
+            throw new IllegalArgumentException("Return date must be after pickup date");
+        }
+        
         Sort sort = direction.equalsIgnoreCase("desc") ? Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();
         Pageable pageable = PageRequest.of(page, size, sort);
-        return service.searchWithFilters(address, branch, type, make, year, pageable);
+        return service.searchWithFilters(address, branch, type, make, year, pickupDate, returnDate, pageable);
     }
 
     @Operation(summary = "Get car by ID", description = "Retrieve detailed information about a specific car")
@@ -56,7 +65,6 @@ class InventorySearchController {
     public ResponseEntity<CarDTO> getCarById(
             @Parameter(description = "Car ID", required = true) @PathVariable Long id) {
         return service.getCarById(id)
-                .map(CarDTO::from)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }

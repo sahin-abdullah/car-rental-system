@@ -1,4 +1,4 @@
-package com.rental.car.common;
+package com.rental.car.exceptions;
 
 public class ResourceNotFoundException extends RuntimeException {
     
@@ -12,5 +12,9 @@ public class ResourceNotFoundException extends RuntimeException {
     
     public static ResourceNotFoundException branch(String code) {
         return new ResourceNotFoundException("Branch not found: " + code);
+    }
+    
+    public static ResourceNotFoundException reservation(Long id) {
+        return new ResourceNotFoundException("Reservation not found: " + id);
     }
 }

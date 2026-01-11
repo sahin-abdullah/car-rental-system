@@ -3,9 +3,11 @@ package com.rental.car.inventory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -66,6 +68,16 @@ interface CarRepository extends JpaRepository<Car, Long> {
                 :maxDistanceKm * 1000.0
             )
         )
+        AND (
+            :pickupDate IS NULL OR :returnDate IS NULL
+            OR NOT EXISTS (
+                SELECT 1 FROM reservations r
+                WHERE r.car_id = c.id
+                AND r.status IN ('PENDING', 'CONFIRMED', 'ACTIVE')
+                AND r.pickup_date < CAST(:returnDate AS date)
+                AND r.return_date > CAST(:pickupDate AS date)
+            )
+        )
         ORDER BY
             CASE WHEN :lat IS NULL OR :lon IS NULL THEN 1 ELSE 0 END,
             CASE WHEN :lat IS NULL OR :lon IS NULL THEN c.id ELSE NULL END ASC,
@@ -89,6 +101,16 @@ interface CarRepository extends JpaRepository<Car, Long> {
                 :maxDistanceKm * 1000.0
             )
         )
+        AND (
+            :pickupDate IS NULL OR :returnDate IS NULL
+            OR NOT EXISTS (
+                SELECT 1 FROM reservations r
+                WHERE r.car_id = c.id
+                AND r.status IN ('PENDING', 'CONFIRMED', 'ACTIVE')
+                AND r.pickup_date < CAST(:returnDate AS date)
+                AND r.return_date > CAST(:pickupDate AS date)
+            )
+        )
     """,
     nativeQuery = true)
     Page<CarWithDistance> searchFleetUnified(
@@ -99,6 +121,8 @@ interface CarRepository extends JpaRepository<Car, Long> {
         @Param("type") String type,
         @Param("make") String make,
         @Param("year") Integer year,
+        @Param("pickupDate") LocalDate pickupDate,
+        @Param("returnDate") LocalDate returnDate,
         Pageable pageable
     );
 
@@ -131,4 +155,36 @@ interface CarRepository extends JpaRepository<Car, Long> {
         ORDER BY c.year DESC
     """)
     List<Integer> findAvailableYears(@Param("branchCode") String branchCode, @Param("type") CarType type, @Param("make") String make);
+
+    /**
+     * Atomically update car availability only if current availability matches expected value.
+     * Returns the number of rows updated (0 if not found or availability didn't match, 1 if successful).
+     */
+    @Modifying
+    @Query("""
+        UPDATE Car c 
+        SET c.available = :newAvailability
+        WHERE c.id = :carId 
+        AND c.available = :expectedAvailability
+    """)
+    int updateAvailabilityAtomically(
+        @Param("carId") Long carId,
+        @Param("expectedAvailability") boolean expectedAvailability,
+        @Param("newAvailability") boolean newAvailability
+    );
+
+    /**
+     * Atomically move car to a different branch.
+     * Uses optimistic locking via @Version to prevent concurrent modifications.
+     */
+    @Modifying
+    @Query("""
+        UPDATE Car c 
+        SET c.currentBranch.id = :branchId
+        WHERE c.id = :carId
+    """)
+    int updateCarBranch(
+        @Param("carId") Long carId,
+        @Param("branchId") Long branchId
+    );
 }

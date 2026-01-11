@@ -4,12 +4,12 @@ interface BranchWithDistance {
     Long getId();
     String getCode();
     String getName();
-    String getPhone();
+    String getPhoneNumber();
     String getStreet1();
     String getCity();
     String getState();
     String getCountry();
-    String getPostalCode();
+    String getZipCode();
     Double getLatitude();
     Double getLongitude();
     Double getDistanceKm();

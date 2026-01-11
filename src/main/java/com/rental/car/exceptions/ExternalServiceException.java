@@ -1,4 +1,4 @@
-package com.rental.car.common;
+package com.rental.car.exceptions;
 
 public class ExternalServiceException extends RuntimeException {
     

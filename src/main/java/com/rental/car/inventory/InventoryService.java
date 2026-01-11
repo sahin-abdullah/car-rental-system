@@ -1,8 +1,8 @@
 package com.rental.car.inventory;
 
-import com.rental.car.common.DuplicateResourceException;
+import com.rental.car.exceptions.DuplicateResourceException;
 import com.rental.car.common.GeocodingService;
-import com.rental.car.common.ResourceNotFoundException;
+import com.rental.car.exceptions.ResourceNotFoundException;
 
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -11,6 +11,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -26,7 +27,7 @@ public class InventoryService {
         this.geoService = geoService;
     }
 
-    @Cacheable(value = "carSearch", key = "#address + '-' + #branchCode + '-' + #type + '-' + #make + '-' + #year + '-' + #pageable.pageNumber + '-' + #pageable.pageSize")
+    @Cacheable(value = "carSearch", key = "#address + '-' + #branchCode + '-' + #type + '-' + #make + '-' + #year + '-' + #pickupDate + '-' + #returnDate + '-' + #pageable.pageNumber + '-' + #pageable.pageSize")
     @Transactional(readOnly = true)
     public Page<CarDTO> searchWithFilters(
             String address,
@@ -34,6 +35,8 @@ public class InventoryService {
             CarType type,
             String make,
             Integer year,
+            LocalDate pickupDate,
+            LocalDate returnDate,
             Pageable pageable
     ) {
         final Double searchLat;
@@ -61,7 +64,7 @@ public class InventoryService {
                 searchLat, searchLon, searchRadius,
                 branchCode, 
                 type != null ? type.name() : null,
-                make, year, pageable
+                make, year, pickupDate, returnDate, pageable
         ).map(result -> new CarDTO(
             result.getId(),
             CarType.valueOf(result.getType()),
@@ -89,34 +92,6 @@ public class InventoryService {
         return branchRepo.existsByCode(branchCode);
     }
 
-    @Transactional
-    public void createBranch(String code, String name, String phone, Address address) {
-        if (!branchRepo.existsByCode(code)) {
-            String query = address.getStreet1() + ", " + address.getCity() + ", " + 
-                          address.getState() + ", " + address.getCountry();
-
-            double[] coords = geoService.getCoordinates(query);
-            address.setLatitude(coords[0]);
-            address.setLongitude(coords[1]);
-
-            Branch branch = new Branch(null, code, name, phone, address);
-            branchRepo.save(branch);
-            System.out.println("Created Branch: " + name + " [" + coords[0] + ", " + coords[1] + "]");
-        }
-    }
-
-    @CacheEvict(value = "carSearch", allEntries = true)
-    @Transactional
-    public void addCar(CarType type, String plate, String make, String model, int year, String branchCode) {
-        if (!carRepo.existsByLicensePlate(plate)) {
-            Branch branch = branchRepo.findByCode(branchCode)
-                    .orElseThrow(() -> ResourceNotFoundException.branch(branchCode));
-            
-            Car car = new Car(null, type, plate, make, model, year, branch, true);
-            carRepo.save(car);
-        }
-    }
-
     @Transactional(readOnly = true)
     public Page<Branch> getAllBranches(Pageable pageable) {
         return branchRepo.findAll(pageable);
@@ -128,11 +103,23 @@ public class InventoryService {
     }
 
     @Transactional(readOnly = true)
-    public java.util.Optional<Car> getCarById(Long id) {
-        return carRepo.findById(id);
+    public java.util.Optional<CarDTO> getCarById(Long id) {
+        return carRepo.findById(id)
+                .map(car -> new CarDTO(
+                        car.getId(),
+                        car.getType(),
+                        car.getLicensePlate(),
+                        car.getMake(),
+                        car.getModel(),
+                        car.getYear(),
+                        car.getCurrentBranch().getCode(),
+                        car.getCurrentBranch().getName(),
+                        car.getCurrentBranch().getAddress().getCity(),
+                        car.isAvailable(),
+                        null
+                ));
     }
 
-    // Branch-centric filtering methods
     @Transactional(readOnly = true)
     public List<CarType> getAvailableTypesAtBranch(String branchCode) {
         return carRepo.findAvailableTypes(branchCode);
@@ -153,6 +140,11 @@ public class InventoryService {
     public void updateCarAvailability(Long carId, boolean available) {
         Car car = carRepo.findById(carId)
                 .orElseThrow(() -> ResourceNotFoundException.car(carId));
+        
+        if (car.isAvailable() == available) {
+            return;  
+        }
+        
         car.setAvailable(available);
         carRepo.save(car);
     }
@@ -164,8 +156,13 @@ public class InventoryService {
                 .orElseThrow(() -> ResourceNotFoundException.car(carId));
         Branch targetBranch = branchRepo.findByCode(branchCode)
                 .orElseThrow(() -> ResourceNotFoundException.branch(branchCode));
+        
+        if (car.getCurrentBranch().getId().equals(targetBranch.getId())) {
+            return;
+        }
+        
         car.setCurrentBranch(targetBranch);
-        carRepo.save(car);
+        carRepo.save(car);  // @Version will detect if car was modified concurrently
     }
 
 
@@ -178,7 +175,7 @@ public class InventoryService {
         Branch branch = branchRepo.findByCode(branchCode)
                 .orElseThrow(() -> ResourceNotFoundException.branch(branchCode));
         
-        Car car = new Car(null, type, plate, make, model, year, branch, available);
+        Car car = new Car(null, type, plate, make, model, year, branch, available, null);  // version managed by JPA
         return carRepo.save(car);
     }
 

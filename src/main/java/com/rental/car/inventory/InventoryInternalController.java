@@ -50,7 +50,6 @@ class InventoryInternalController {
     public ResponseEntity<CarDTO> getCarById(
             @Parameter(description = "Car ID", required = true) @PathVariable Long id) {
         return service.getCarById(id)
-                .map(CarDTO::from)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }

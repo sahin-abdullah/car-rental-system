@@ -32,5 +32,9 @@ class Car {
     @JoinColumn(name = "current_branch_id", nullable = false)
     private Branch currentBranch; 
 
-    private boolean available = true; 
+    private boolean available = true;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    private Integer version;
 }
