@@ -51,7 +51,7 @@ public class ReservationControllerTest {
 
     @Test
     public void testCalculatePrice() {
-        when(service.calculatePrice(anyLong(), any(LocalDate.class), any(LocalDate.class), anyString(), anyString()))
+        when(service.calculatePrice(anyLong(), any(LocalDate.class), any(LocalDate.class), any(), any()))
                 .thenReturn(pricingResponse);
 
         PriceCalculationResponse result = controller.calculatePrice(
@@ -60,7 +60,7 @@ public class ReservationControllerTest {
 
         assertNotNull(result);
         assertEquals(result.totalPrice(), new BigDecimal("275.00"));
-        verify(service, times(1)).calculatePrice(anyLong(), any(LocalDate.class), any(LocalDate.class), anyString(), anyString());
+        verify(service, times(1)).calculatePrice(anyLong(), any(LocalDate.class), any(LocalDate.class), any(), any());
     }
 
     @Test
