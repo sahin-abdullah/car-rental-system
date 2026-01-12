@@ -1,0 +1,654 @@
+{
+  "_type": "export",
+  "__export_format": 4,
+  "__export_date": "2026-01-11T00:00:00.000Z",
+  "__export_source": "insomnia.desktop.app:v2023.5.8",
+  "resources": [
+    {
+      "_id": "wrk_car_rental",
+      "_type": "workspace",
+      "name": "Car Rental System (Spring Boot)",
+      "description": "API collection generated from current codebase: public + internal endpoints, actuator, and scenario requests (happy + negative)."
+    },
+    {
+      "_id": "env_local",
+      "_type": "environment",
+      "parentId": "wrk_car_rental",
+      "name": "Local Development",
+      "data": {
+        "base_url": "http://localhost:8080",
+
+        "public_inventory_base": "{{ _.base_url }}/api/v1/inventory",
+        "public_reservations_base": "{{ _.base_url }}/api/v1/reservations",
+        "internal_inventory_base": "{{ _.base_url }}/api/internal/v1/inventory",
+        "internal_reservations_base": "{{ _.base_url }}/api/internal/v1/reservations",
+        "actuator_base": "{{ _.base_url }}/actuator",
+
+        "customer_email": "john.doe@example.com",
+        "customer_name": "John Doe",
+        "customer_phone": "+1-617-555-1234",
+
+        "test_branch_code": "BOS-LOGAN",
+        "test_other_branch_code": "BOS-DTN",
+        "test_car_id": 1,
+
+        "pickup_date": "2026-02-01",
+        "return_date": "2026-02-05",
+
+        "reservation_id": 1,
+        "admin_reservation_id": 1
+      }
+    },
+
+    {
+      "_id": "fld_public_inventory",
+      "_type": "request_group",
+      "parentId": "wrk_car_rental",
+      "name": "Public - Inventory",
+      "description": "Customer-facing inventory search (supports date-aware availability via pickupDate/returnDate)."
+    },
+    {
+      "_id": "req_inventory_search_basic",
+      "_type": "request",
+      "parentId": "fld_public_inventory",
+      "name": "Search Cars (Basic)",
+      "method": "GET",
+      "url": "{{ _.public_inventory_base }}/cars?page=0&size=10"
+    },
+    {
+      "_id": "req_inventory_search_date_aware",
+      "_type": "request",
+      "parentId": "fld_public_inventory",
+      "name": "Search Cars (Date-aware availability)",
+      "method": "GET",
+      "url": "{{ _.public_inventory_base }}/cars?branch={{ _.test_branch_code }}&pickupDate={{ _.pickup_date }}&returnDate={{ _.return_date }}&page=0&size=10",
+      "description": "Uses reservation overlap logic to exclude cars already reserved in the date range."
+    },
+    {
+      "_id": "req_inventory_search_by_address",
+      "_type": "request",
+      "parentId": "fld_public_inventory",
+      "name": "Search Cars by Address (Nearby branches)",
+      "method": "GET",
+      "url": "{{ _.public_inventory_base }}/cars?address=Boston, MA&pickupDate={{ _.pickup_date }}&returnDate={{ _.return_date }}&page=0&size=10"
+    },
+    {
+      "_id": "req_inventory_search_filters",
+      "_type": "request",
+      "parentId": "fld_public_inventory",
+      "name": "Search Cars (Filters: type/make/year)",
+      "method": "GET",
+      "url": "{{ _.public_inventory_base }}/cars?branch={{ _.test_branch_code }}&type=SUV&make=Toyota&year=2024&pickupDate={{ _.pickup_date }}&returnDate={{ _.return_date }}&page=0&size=10"
+    },
+    {
+      "_id": "req_inventory_get_car",
+      "_type": "request",
+      "parentId": "fld_public_inventory",
+      "name": "Get Car by ID",
+      "method": "GET",
+      "url": "{{ _.public_inventory_base }}/cars/{{ _.test_car_id }}"
+    },
+    {
+      "_id": "req_inventory_list_branches",
+      "_type": "request",
+      "parentId": "fld_public_inventory",
+      "name": "List Branches (Paginated)",
+      "method": "GET",
+      "url": "{{ _.public_inventory_base }}/branches?page=0&size=20"
+    },
+    {
+      "_id": "req_inventory_get_branch",
+      "_type": "request",
+      "parentId": "fld_public_inventory",
+      "name": "Get Branch by Code",
+      "method": "GET",
+      "url": "{{ _.public_inventory_base }}/branches/{{ _.test_branch_code }}"
+    },
+    {
+      "_id": "req_inventory_nearest_branches",
+      "_type": "request",
+      "parentId": "fld_public_inventory",
+      "name": "Nearest Branches (Coordinates)",
+      "method": "GET",
+      "url": "{{ _.public_inventory_base }}/branches/nearest?lat=42.3601&lon=-71.0589"
+    },
+    {
+      "_id": "req_inventory_filters_types",
+      "_type": "request",
+      "parentId": "fld_public_inventory",
+      "name": "Branch Filters: Types",
+      "method": "GET",
+      "url": "{{ _.public_inventory_base }}/branches/{{ _.test_branch_code }}/filters?filter=types"
+    },
+    {
+      "_id": "req_inventory_filters_makes",
+      "_type": "request",
+      "parentId": "fld_public_inventory",
+      "name": "Branch Filters: Makes (by type)",
+      "method": "GET",
+      "url": "{{ _.public_inventory_base }}/branches/{{ _.test_branch_code }}/filters?filter=makes&type=SUV"
+    },
+    {
+      "_id": "req_inventory_filters_years",
+      "_type": "request",
+      "parentId": "fld_public_inventory",
+      "name": "Branch Filters: Years (by type + make)",
+      "method": "GET",
+      "url": "{{ _.public_inventory_base }}/branches/{{ _.test_branch_code }}/filters?filter=years&type=SUV&make=Toyota"
+    },
+
+    {
+      "_id": "fld_public_reservations",
+      "_type": "request_group",
+      "parentId": "wrk_car_rental",
+      "name": "Public - Reservations",
+      "description": "Customer booking flow. Conflicts return 409; business rule violations often return 422; validation errors return 400."
+    },
+    {
+      "_id": "req_res_price",
+      "_type": "request",
+      "parentId": "fld_public_reservations",
+      "name": "Calculate Price",
+      "method": "GET",
+      "url": "{{ _.public_reservations_base }}/price?carId={{ _.test_car_id }}&pickupDate={{ _.pickup_date }}&returnDate={{ _.return_date }}"
+    },
+    {
+      "_id": "req_res_create",
+      "_type": "request",
+      "parentId": "fld_public_reservations",
+      "name": "Create Reservation (PENDING)",
+      "method": "POST",
+      "url": "{{ _.public_reservations_base }}",
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"carId\": {{ _.test_car_id }},\n  \"customerEmail\": \"{{ _.customer_email }}\",\n  \"customerName\": \"{{ _.customer_name }}\",\n  \"customerPhone\": \"{{ _.customer_phone }}\",\n  \"pickupBranchCode\": \"{{ _.test_branch_code }}\",\n  \"returnBranchCode\": \"{{ _.test_branch_code }}\",\n  \"pickupDate\": \"{{ _.pickup_date }}\",\n  \"returnDate\": \"{{ _.return_date }}\",\n  \"notes\": \"Insomnia happy-path create\"\n}"
+      },
+      "description": "Creates a reservation in PENDING status (server assigns expiresAt ~30 minutes)."
+    },
+    {
+      "_id": "req_res_get_by_id",
+      "_type": "request",
+      "parentId": "fld_public_reservations",
+      "name": "Get Reservation by ID",
+      "method": "GET",
+      "url": "{{ _.public_reservations_base }}/{{ _.reservation_id }}"
+    },
+    {
+      "_id": "req_res_update",
+      "_type": "request",
+      "parentId": "fld_public_reservations",
+      "name": "Update Reservation (Dates/Notes)",
+      "method": "PUT",
+      "url": "{{ _.public_reservations_base }}/{{ _.reservation_id }}",
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"returnDate\": \"2026-02-06\",\n  \"notes\": \"Extended by 1 day\"\n}"
+      }
+    },
+    {
+      "_id": "req_res_cancel",
+      "_type": "request",
+      "parentId": "fld_public_reservations",
+      "name": "Cancel Reservation",
+      "method": "POST",
+      "url": "{{ _.public_reservations_base }}/{{ _.reservation_id }}/cancel"
+    },
+    {
+      "_id": "req_res_customer_all",
+      "_type": "request",
+      "parentId": "fld_public_reservations",
+      "name": "Customer Reservations (Paginated)",
+      "method": "GET",
+      "url": "{{ _.public_reservations_base }}/customer/{{ _.customer_email }}?page=0&size=10"
+    },
+    {
+      "_id": "req_res_customer_upcoming",
+      "_type": "request",
+      "parentId": "fld_public_reservations",
+      "name": "Customer Upcoming Reservations",
+      "method": "GET",
+      "url": "{{ _.public_reservations_base }}/customer/{{ _.customer_email }}/upcoming"
+    },
+
+    {
+      "_id": "fld_internal_inventory",
+      "_type": "request_group",
+      "parentId": "wrk_car_rental",
+      "name": "Internal - Inventory (Admin)",
+      "description": "Admin/system endpoints for managing cars and branches."
+    },
+    {
+      "_id": "req_int_inv_branch_exists",
+      "_type": "request",
+      "parentId": "fld_internal_inventory",
+      "name": "Branch Exists",
+      "method": "GET",
+      "url": "{{ _.internal_inventory_base }}/branches/{{ _.test_branch_code }}/exists"
+    },
+    {
+      "_id": "req_int_inv_get_branch",
+      "_type": "request",
+      "parentId": "fld_internal_inventory",
+      "name": "Get Branch",
+      "method": "GET",
+      "url": "{{ _.internal_inventory_base }}/branches/{{ _.test_branch_code }}"
+    },
+    {
+      "_id": "req_int_inv_get_car",
+      "_type": "request",
+      "parentId": "fld_internal_inventory",
+      "name": "Get Car",
+      "method": "GET",
+      "url": "{{ _.internal_inventory_base }}/cars/{{ _.test_car_id }}"
+    },
+    {
+      "_id": "req_int_inv_update_availability",
+      "_type": "request",
+      "parentId": "fld_internal_inventory",
+      "name": "Update Car Availability",
+      "method": "POST",
+      "url": "{{ _.internal_inventory_base }}/cars/{{ _.test_car_id }}/availability",
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"available\": false\n}"
+      }
+    },
+    {
+      "_id": "req_int_inv_move_car",
+      "_type": "request",
+      "parentId": "fld_internal_inventory",
+      "name": "Move Car to Branch",
+      "method": "PUT",
+      "url": "{{ _.internal_inventory_base }}/cars/{{ _.test_car_id }}/branch",
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"branchCode\": \"{{ _.test_other_branch_code }}\"\n}"
+      }
+    },
+    {
+      "_id": "req_int_inv_create_car",
+      "_type": "request",
+      "parentId": "fld_internal_inventory",
+      "name": "Create Car",
+      "method": "POST",
+      "url": "{{ _.internal_inventory_base }}/cars",
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"type\": \"SEDAN\",\n  \"licensePlate\": \"MA-NEW-001\",\n  \"make\": \"Toyota\",\n  \"model\": \"Camry\",\n  \"year\": 2025,\n  \"branchCode\": \"{{ _.test_branch_code }}\",\n  \"available\": true\n}"
+      }
+    },
+    {
+      "_id": "req_int_inv_update_car",
+      "_type": "request",
+      "parentId": "fld_internal_inventory",
+      "name": "Update Car",
+      "method": "PUT",
+      "url": "{{ _.internal_inventory_base }}/cars/{{ _.test_car_id }}",
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"type\": \"SEDAN\",\n  \"licensePlate\": \"MA-001-UPD\",\n  \"make\": \"Toyota\",\n  \"model\": \"Camry Hybrid\",\n  \"year\": 2024,\n  \"branchCode\": \"{{ _.test_branch_code }}\",\n  \"available\": true\n}"
+      },
+      "description": "Note: available is optional (nullable) in the update request."
+    },
+    {
+      "_id": "req_int_inv_delete_car",
+      "_type": "request",
+      "parentId": "fld_internal_inventory",
+      "name": "Delete Car (Example: 999)",
+      "method": "DELETE",
+      "url": "{{ _.internal_inventory_base }}/cars/999"
+    },
+    {
+      "_id": "req_int_inv_create_branch",
+      "_type": "request",
+      "parentId": "fld_internal_inventory",
+      "name": "Create Branch (Example)",
+      "method": "POST",
+      "url": "{{ _.internal_inventory_base }}/branches",
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"code\": \"BOS-TEST\",\n  \"name\": \"Boston Test Branch\",\n  \"phoneNumber\": \"617-555-0000\",\n  \"street\": \"100 Test Street\",\n  \"city\": \"Boston\",\n  \"state\": \"MA\",\n  \"country\": \"USA\",\n  \"zipCode\": \"02101\"\n}"
+      }
+    },
+    {
+      "_id": "req_int_inv_update_branch",
+      "_type": "request",
+      "parentId": "fld_internal_inventory",
+      "name": "Update Branch (Example)",
+      "method": "PUT",
+      "url": "{{ _.internal_inventory_base }}/branches/BOS-TEST",
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"name\": \"Boston Test Branch - Updated\",\n  \"phoneNumber\": \"617-555-1111\",\n  \"street\": \"101 Test Street\",\n  \"city\": \"Boston\",\n  \"state\": \"MA\",\n  \"country\": \"USA\",\n  \"zipCode\": \"02101\"\n}"
+      }
+    },
+    {
+      "_id": "req_int_inv_delete_branch",
+      "_type": "request",
+      "parentId": "fld_internal_inventory",
+      "name": "Delete Branch (Example)",
+      "method": "DELETE",
+      "url": "{{ _.internal_inventory_base }}/branches/BOS-TEST"
+    },
+
+    {
+      "_id": "fld_internal_reservations",
+      "_type": "request_group",
+      "parentId": "wrk_car_rental",
+      "name": "Internal - Reservations (Admin)",
+      "description": "Admin reservation lifecycle endpoints (confirm/start/complete) + list/filter."
+    },
+    {
+      "_id": "req_int_res_list",
+      "_type": "request",
+      "parentId": "fld_internal_reservations",
+      "name": "List Reservations",
+      "method": "GET",
+      "url": "{{ _.internal_reservations_base }}?page=0&size=20"
+    },
+    {
+      "_id": "req_int_res_by_status",
+      "_type": "request",
+      "parentId": "fld_internal_reservations",
+      "name": "Filter Reservations by Status (PENDING)",
+      "method": "GET",
+      "url": "{{ _.internal_reservations_base }}/status/PENDING?page=0&size=20"
+    },
+    {
+      "_id": "req_int_res_get",
+      "_type": "request",
+      "parentId": "fld_internal_reservations",
+      "name": "Get Reservation (Admin)",
+      "method": "GET",
+      "url": "{{ _.internal_reservations_base }}/{{ _.admin_reservation_id }}"
+    },
+    {
+      "_id": "req_int_res_confirm",
+      "_type": "request",
+      "parentId": "fld_internal_reservations",
+      "name": "Confirm Reservation (PENDING → CONFIRMED)",
+      "method": "POST",
+      "url": "{{ _.internal_reservations_base }}/{{ _.admin_reservation_id }}/confirm"
+    },
+    {
+      "_id": "req_int_res_start",
+      "_type": "request",
+      "parentId": "fld_internal_reservations",
+      "name": "Start Reservation (CONFIRMED → ACTIVE)",
+      "method": "POST",
+      "url": "{{ _.internal_reservations_base }}/{{ _.admin_reservation_id }}/start"
+    },
+    {
+      "_id": "req_int_res_complete",
+      "_type": "request",
+      "parentId": "fld_internal_reservations",
+      "name": "Complete Reservation (ACTIVE → COMPLETED)",
+      "method": "POST",
+      "url": "{{ _.internal_reservations_base }}/{{ _.admin_reservation_id }}/complete"
+    },
+
+    {
+      "_id": "fld_actuator",
+      "_type": "request_group",
+      "parentId": "wrk_car_rental",
+      "name": "Actuator & Docs",
+      "description": "Actuator endpoints exposed by application.properties: health, info, prometheus, metrics (+ Swagger/OpenAPI)."
+    },
+    {
+      "_id": "req_actuator_health",
+      "_type": "request",
+      "parentId": "fld_actuator",
+      "name": "Actuator: Health",
+      "method": "GET",
+      "url": "{{ _.actuator_base }}/health"
+    },
+    {
+      "_id": "req_actuator_info",
+      "_type": "request",
+      "parentId": "fld_actuator",
+      "name": "Actuator: Info",
+      "method": "GET",
+      "url": "{{ _.actuator_base }}/info"
+    },
+    {
+      "_id": "req_actuator_metrics",
+      "_type": "request",
+      "parentId": "fld_actuator",
+      "name": "Actuator: Metrics Index",
+      "method": "GET",
+      "url": "{{ _.actuator_base }}/metrics"
+    },
+    {
+      "_id": "req_actuator_metrics_jvm_memory",
+      "_type": "request",
+      "parentId": "fld_actuator",
+      "name": "Actuator: Metric (jvm.memory.used)",
+      "method": "GET",
+      "url": "{{ _.actuator_base }}/metrics/jvm.memory.used"
+    },
+    {
+      "_id": "req_actuator_prometheus",
+      "_type": "request",
+      "parentId": "fld_actuator",
+      "name": "Actuator: Prometheus",
+      "method": "GET",
+      "url": "{{ _.actuator_base }}/prometheus"
+    },
+    {
+      "_id": "req_swagger_ui",
+      "_type": "request",
+      "parentId": "fld_actuator",
+      "name": "Swagger UI",
+      "method": "GET",
+      "url": "{{ _.base_url }}/swagger-ui.html"
+    },
+    {
+      "_id": "req_openapi",
+      "_type": "request",
+      "parentId": "fld_actuator",
+      "name": "OpenAPI (JSON)",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api-docs"
+    },
+
+    {
+      "_id": "fld_scenarios_happy",
+      "_type": "request_group",
+      "parentId": "wrk_car_rental",
+      "name": "Scenarios - Happy Paths",
+      "description": "End-to-end examples. Some steps use Insomnia Response Template Tags to chain IDs."
+    },
+    {
+      "_id": "req_s1_search",
+      "_type": "request",
+      "parentId": "fld_scenarios_happy",
+      "name": "Scenario 1 - Search (date-aware)",
+      "method": "GET",
+      "url": "{{ _.public_inventory_base }}/cars?branch={{ _.test_branch_code }}&pickupDate={{ _.pickup_date }}&returnDate={{ _.return_date }}&page=0&size=10",
+      "description": "Step 1: Find cars available in a specific date range."
+    },
+    {
+      "_id": "req_s1_quote",
+      "_type": "request",
+      "parentId": "fld_scenarios_happy",
+      "name": "Scenario 1 - Price Quote",
+      "method": "GET",
+      "url": "{{ _.public_reservations_base }}/price?carId={{ _.test_car_id }}&pickupDate={{ _.pickup_date }}&returnDate={{ _.return_date }}",
+      "description": "Step 2: Quote price for the same car/date range."
+    },
+    {
+      "_id": "req_s1_create",
+      "_type": "request",
+      "parentId": "fld_scenarios_happy",
+      "name": "Scenario 1 - Create Reservation (PENDING)",
+      "method": "POST",
+      "url": "{{ _.public_reservations_base }}",
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"carId\": {{ _.test_car_id }},\n  \"customerEmail\": \"scenario1@example.com\",\n  \"customerName\": \"Scenario One\",\n  \"customerPhone\": \"+1-555-0101\",\n  \"pickupBranchCode\": \"{{ _.test_branch_code }}\",\n  \"returnBranchCode\": \"{{ _.test_branch_code }}\",\n  \"pickupDate\": \"{{ _.pickup_date }}\",\n  \"returnDate\": \"{{ _.return_date }}\",\n  \"notes\": \"Scenario 1 create\"\n}"
+      },
+      "description": "Step 3: Create a reservation. Use the next request to fetch it using the response-derived ID."
+    },
+    {
+      "_id": "req_s1_get_created",
+      "_type": "request",
+      "parentId": "fld_scenarios_happy",
+      "name": "Scenario 1 - Get Created Reservation (chained)",
+      "method": "GET",
+      "url": "{{ _.public_reservations_base }}/{% response 'req_s1_create', 'body', 'jsonpath', '$.id' %}",
+      "description": "Uses Insomnia Response Template Tag to fetch the created reservation id from Scenario 1 - Create Reservation response."
+    },
+    {
+      "_id": "req_s1_cancel_created",
+      "_type": "request",
+      "parentId": "fld_scenarios_happy",
+      "name": "Scenario 1 - Cancel Created Reservation (chained)",
+      "method": "POST",
+      "url": "{{ _.public_reservations_base }}/{% response 'req_s1_create', 'body', 'jsonpath', '$.id' %}/cancel",
+      "description": "Cancels the created reservation (PENDING/CONFIRMED typically)."
+    },
+
+    {
+      "_id": "req_s2_admin_confirm",
+      "_type": "request",
+      "parentId": "fld_scenarios_happy",
+      "name": "Scenario 2 - Admin Lifecycle (Confirm)",
+      "method": "POST",
+      "url": "{{ _.internal_reservations_base }}/{{ _.admin_reservation_id }}/confirm",
+      "description": "Confirm a reservation after payment (PENDING → CONFIRMED)."
+    },
+    {
+      "_id": "req_s2_admin_start",
+      "_type": "request",
+      "parentId": "fld_scenarios_happy",
+      "name": "Scenario 2 - Admin Lifecycle (Start)",
+      "method": "POST",
+      "url": "{{ _.internal_reservations_base }}/{{ _.admin_reservation_id }}/start",
+      "description": "Start a reservation when customer picks up (CONFIRMED → ACTIVE)."
+    },
+    {
+      "_id": "req_s2_admin_complete",
+      "_type": "request",
+      "parentId": "fld_scenarios_happy",
+      "name": "Scenario 2 - Admin Lifecycle (Complete)",
+      "method": "POST",
+      "url": "{{ _.internal_reservations_base }}/{{ _.admin_reservation_id }}/complete",
+      "description": "Complete a reservation when returned (ACTIVE → COMPLETED)."
+    },
+
+    {
+      "_id": "fld_scenarios_negative",
+      "_type": "request_group",
+      "parentId": "wrk_car_rental",
+      "name": "Scenarios - Negative / Edge Cases",
+      "description": "Requests intended to produce 400/404/409/422 to validate business rules and API semantics."
+    },
+    {
+      "_id": "req_neg_inventory_bad_dates",
+      "_type": "request",
+      "parentId": "fld_scenarios_negative",
+      "name": "NEG: Inventory Search invalid date range (400)",
+      "method": "GET",
+      "url": "{{ _.public_inventory_base }}/cars?branch={{ _.test_branch_code }}&pickupDate=2026-02-05&returnDate=2026-02-05&page=0&size=10",
+      "description": "returnDate must be after pickupDate."
+    },
+    {
+      "_id": "req_neg_res_create_bad_dates",
+      "_type": "request",
+      "parentId": "fld_scenarios_negative",
+      "name": "NEG: Create Reservation invalid dates (400)",
+      "method": "POST",
+      "url": "{{ _.public_reservations_base }}",
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"carId\": {{ _.test_car_id }},\n  \"customerEmail\": \"bad.dates@example.com\",\n  \"customerName\": \"Bad Dates\",\n  \"customerPhone\": \"+1-555-0000\",\n  \"pickupBranchCode\": \"{{ _.test_branch_code }}\",\n  \"returnBranchCode\": \"{{ _.test_branch_code }}\",\n  \"pickupDate\": \"2026-02-10\",\n  \"returnDate\": \"2026-02-09\",\n  \"notes\": \"Should fail\"\n}"
+      },
+      "description": "Record constructor throws IllegalArgumentException when returnDate <= pickupDate."
+    },
+    {
+      "_id": "req_neg_res_create_unknown_car",
+      "_type": "request",
+      "parentId": "fld_scenarios_negative",
+      "name": "NEG: Create Reservation car not found (404)",
+      "method": "POST",
+      "url": "{{ _.public_reservations_base }}",
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"carId\": 999999,\n  \"customerEmail\": \"missing.car@example.com\",\n  \"customerName\": \"Missing Car\",\n  \"customerPhone\": \"+1-555-0000\",\n  \"pickupBranchCode\": \"{{ _.test_branch_code }}\",\n  \"returnBranchCode\": \"{{ _.test_branch_code }}\",\n  \"pickupDate\": \"2026-02-10\",\n  \"returnDate\": \"2026-02-12\",\n  \"notes\": \"Should 404\"\n}"
+      }
+    },
+    {
+      "_id": "req_neg_res_create_conflict",
+      "_type": "request",
+      "parentId": "fld_scenarios_negative",
+      "name": "NEG: Create Reservation conflicting overlap (409)",
+      "method": "POST",
+      "url": "{{ _.public_reservations_base }}",
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"carId\": {{ _.test_car_id }},\n  \"customerEmail\": \"conflict@example.com\",\n  \"customerName\": \"Conflict Case\",\n  \"customerPhone\": \"+1-555-0000\",\n  \"pickupBranchCode\": \"{{ _.test_branch_code }}\",\n  \"returnBranchCode\": \"{{ _.test_branch_code }}\",\n  \"pickupDate\": \"{{ _.pickup_date }}\",\n  \"returnDate\": \"{{ _.return_date }}\",\n  \"notes\": \"Run this AFTER you already created a reservation for the same car/date range to get 409\"\n}"
+      },
+      "description": "Best used immediately after a successful create for the same car/date range."
+    },
+    {
+      "_id": "req_neg_res_update_bad_dates",
+      "_type": "request",
+      "parentId": "fld_scenarios_negative",
+      "name": "NEG: Update Reservation invalid date range (400)",
+      "method": "PUT",
+      "url": "{{ _.public_reservations_base }}/{{ _.reservation_id }}",
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"pickupDate\": \"2026-02-10\",\n  \"returnDate\": \"2026-02-09\"\n}"
+      }
+    },
+    {
+      "_id": "req_neg_internal_confirm_wrong_state",
+      "_type": "request",
+      "parentId": "fld_scenarios_negative",
+      "name": "NEG: Confirm Reservation wrong state (422)",
+      "method": "POST",
+      "url": "{{ _.internal_reservations_base }}/{{ _.admin_reservation_id }}/confirm",
+      "description": "If the reservation is not PENDING, expect 422 (business rule violation)."
+    }
+  ]
+}
