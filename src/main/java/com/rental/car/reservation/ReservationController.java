@@ -33,9 +33,11 @@ class ReservationController {
     public PriceCalculationResponse calculatePrice(
             @Parameter(description = "Car ID", required = true, example = "10") @RequestParam Long carId,
             @Parameter(description = "Pickup date", required = true, example = "2026-01-15") @RequestParam LocalDate pickupDate,
-            @Parameter(description = "Return date", required = true, example = "2026-01-20") @RequestParam LocalDate returnDate
+            @Parameter(description = "Return date", required = true, example = "2026-01-20") @RequestParam LocalDate returnDate,
+            @Parameter(description = "Pickup branch code (optional, defaults to car's current location)", example = "BOS_LOGAN") @RequestParam(required = false) String pickupBranchCode,
+            @Parameter(description = "Return branch code (optional, defaults to pickup branch)", example = "WOR_DTN") @RequestParam(required = false) String returnBranchCode
     ) {
-        return service.calculatePrice(carId, pickupDate, returnDate);
+        return service.calculatePrice(carId, pickupDate, returnDate, pickupBranchCode, returnBranchCode);
     }
 
     @Operation(summary = "Create reservation", description = "Create a new car reservation")

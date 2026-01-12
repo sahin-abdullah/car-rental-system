@@ -93,6 +93,11 @@ public class InventoryService {
     }
 
     @Transactional(readOnly = true)
+    public boolean isAirportBranch(String branchCode) {
+        return branchRepo.isAirportBranch(branchCode).orElse(false);
+    }
+
+    @Transactional(readOnly = true)
     public Page<Branch> getAllBranches(Pageable pageable) {
         return branchRepo.findAll(pageable);
     }

@@ -135,7 +135,7 @@ public class ReservationServiceTest {
                 .thenReturn(pricingResponse);
 
         PriceCalculationResponse result = reservationService.calculatePrice(
-                10L, LocalDate.now().plusDays(5), LocalDate.now().plusDays(10)
+                10L, LocalDate.now().plusDays(5), LocalDate.now().plusDays(10), null, null
         );
 
         assertNotNull(result);
@@ -205,7 +205,7 @@ public class ReservationServiceTest {
     @Test(expectedExceptions = ResourceNotFoundException.class)
     public void testCalculatePriceCarNotFound() {
         when(inventoryService.getCarById(999L)).thenReturn(Optional.empty());
-        reservationService.calculatePrice(999L, LocalDate.now().plusDays(5), LocalDate.now().plusDays(10));
+        reservationService.calculatePrice(999L, LocalDate.now().plusDays(5), LocalDate.now().plusDays(10), null, null);
     }
 
     @Test(expectedExceptions = ResourceNotFoundException.class)

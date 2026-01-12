@@ -109,22 +109,32 @@ public class ReservationService {
     }
 
     @Transactional(readOnly = true)
-    public PriceCalculationResponse calculatePrice(Long carId, LocalDate pickupDate, LocalDate returnDate) {
+    public PriceCalculationResponse calculatePrice(
+            Long carId, 
+            LocalDate pickupDate, 
+            LocalDate returnDate,
+            String pickupBranchCode,
+            String returnBranchCode
+    ) {
         // Verify car exists and get its type
         CarDTO car = inventoryService.getCarById(carId)
                 .orElseThrow(() -> new ResourceNotFoundException("Car not found with id: " + carId));
 
-        // Get pickup branch from car's current location
-        String pickupBranchCode = car.branchCode();
+        // Default to car's current location if pickup branch not specified
+        String pickup = (pickupBranchCode != null && !pickupBranchCode.isBlank()) 
+                ? pickupBranchCode 
+                : car.branchCode();
         
-        // Assume same branch return for price calculation (user can specify different in actual reservation)
-        String returnBranchCode = pickupBranchCode;
+        // Default to pickup branch if return branch not specified
+        String returnBranch = (returnBranchCode != null && !returnBranchCode.isBlank()) 
+                ? returnBranchCode 
+                : pickup;
 
         // Check availability
         boolean available = !reservationRepo.hasConflictingReservation(carId, pickupDate, returnDate);
 
         // Use PricingService to calculate price with CarType
-        return pricingService.calculatePrice(car.type(), pickupBranchCode, returnBranchCode, pickupDate, returnDate, available);
+        return pricingService.calculatePrice(car.type(), pickup, returnBranch, pickupDate, returnDate, available);
     }
 
     @CacheEvict(value = "carSearch", allEntries = true)

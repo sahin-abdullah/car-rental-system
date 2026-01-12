@@ -39,24 +39,24 @@ INSERT INTO addresses (street1, street2, city, state, zip_code, country, latitud
 ('215 Iyannough Rd', NULL, 'Hyannis', 'MA', '02601', 'USA', 41.6526, -70.2830);
 
 -- Then insert branches with address references
-INSERT INTO branches (code, name, phone_number, address_id) VALUES
-('BOS-LOGAN', 'Logan Airport', '617-555-0100', (SELECT id FROM addresses WHERE street1 = '1 Harborside Dr' AND city = 'Boston')),
-('BOS-DTN', 'Boston Downtown', '617-555-0101', (SELECT id FROM addresses WHERE street1 = '125 High St' AND city = 'Boston')),
-('BOS-BACK', 'Back Bay Station', '617-555-0102', (SELECT id FROM addresses WHERE street1 = '145 Dartmouth St')),
-('BOS-SOUTH', 'South Station', '617-555-0103', (SELECT id FROM addresses WHERE street1 = '700 Atlantic Ave')),
-('CAM-MIT', 'Cambridge MIT', '617-555-0200', (SELECT id FROM addresses WHERE street1 = '77 Massachusetts Ave')),
-('CAM-SQUARE', 'Cambridge Harvard Square', '617-555-0201', (SELECT id FROM addresses WHERE street1 = '1 Brattle St')),
-('WOR-UNION', 'Worcester Union Station', '508-555-0300', (SELECT id FROM addresses WHERE street1 = '2 Washington Sq')),
-('WOR-DTN', 'Worcester Downtown', '508-555-0301', (SELECT id FROM addresses WHERE street1 = '44 Front St')),
-('SPG-UNION', 'Springfield Union Station', '413-555-0400', (SELECT id FROM addresses WHERE street1 = '55 Frank B Murray St')),
-('SPG-DTN', 'Springfield Downtown', '413-555-0401', (SELECT id FROM addresses WHERE street1 = '1391 Main St')),
-('LYN-LYNN', 'Lynn Station', '781-555-0500', (SELECT id FROM addresses WHERE street1 = '65 Neptune Blvd')),
-('SAL-SALEM', 'Salem Downtown', '978-555-0501', (SELECT id FROM addresses WHERE street1 = '252 Bridge St')),
-('QUI-QUINCY', 'Quincy Adams Station', '617-555-0600', (SELECT id FROM addresses WHERE street1 = '100 Burgin Pkwy')),
-('BRA-BRAIN', 'Braintree Station', '781-555-0601', (SELECT id FROM addresses WHERE street1 = '50 Forbes Rd')),
-('PIT-PITTS', 'Pittsfield Downtown', '413-555-0700', (SELECT id FROM addresses WHERE street1 = '75 North St')),
-('FRA-FRAML', 'Framingham Station', '508-555-0800', (SELECT id FROM addresses WHERE street1 = '1 Worcester Rd')),
-('HYA-HYAN', 'Hyannis Transportation Center', '508-555-0900', (SELECT id FROM addresses WHERE street1 = '215 Iyannough Rd'));
+INSERT INTO branches (code, name, phone_number, is_airport, address_id) VALUES
+('BOS-LOGAN', 'Logan Airport', '617-555-0100', true, (SELECT id FROM addresses WHERE street1 = '1 Harborside Dr' AND city = 'Boston')),
+('BOS-DTN', 'Boston Downtown', '617-555-0101', false, (SELECT id FROM addresses WHERE street1 = '125 High St' AND city = 'Boston')),
+('BOS-BACK', 'Back Bay Station', '617-555-0102', false, (SELECT id FROM addresses WHERE street1 = '145 Dartmouth St')),
+('BOS-SOUTH', 'South Station', '617-555-0103', false, (SELECT id FROM addresses WHERE street1 = '700 Atlantic Ave')),
+('CAM-MIT', 'Cambridge MIT', '617-555-0200', false, (SELECT id FROM addresses WHERE street1 = '77 Massachusetts Ave')),
+('CAM-SQUARE', 'Cambridge Harvard Square', '617-555-0201', false, (SELECT id FROM addresses WHERE street1 = '1 Brattle St')),
+('WOR-UNION', 'Worcester Union Station', '508-555-0300', false, (SELECT id FROM addresses WHERE street1 = '2 Washington Sq')),
+('WOR-DTN', 'Worcester Downtown', '508-555-0301', false, (SELECT id FROM addresses WHERE street1 = '44 Front St')),
+('SPG-UNION', 'Springfield Union Station', '413-555-0400', false, (SELECT id FROM addresses WHERE street1 = '55 Frank B Murray St')),
+('SPG-DTN', 'Springfield Downtown', '413-555-0401', false, (SELECT id FROM addresses WHERE street1 = '1391 Main St')),
+('LYN-LYNN', 'Lynn Station', '781-555-0500', false, (SELECT id FROM addresses WHERE street1 = '65 Neptune Blvd')),
+('SAL-SALEM', 'Salem Downtown', '978-555-0501', false, (SELECT id FROM addresses WHERE street1 = '252 Bridge St')),
+('QUI-QUINCY', 'Quincy Adams Station', '617-555-0600', false, (SELECT id FROM addresses WHERE street1 = '100 Burgin Pkwy')),
+('BRA-BRAIN', 'Braintree Station', '781-555-0601', false, (SELECT id FROM addresses WHERE street1 = '50 Forbes Rd')),
+('PIT-PITTS', 'Pittsfield Downtown', '413-555-0700', false, (SELECT id FROM addresses WHERE street1 = '75 North St')),
+('FRA-FRAML', 'Framingham Station', '508-555-0800', false, (SELECT id FROM addresses WHERE street1 = '1 Worcester Rd')),
+('HYA-HYAN', 'Hyannis Transportation Center', '508-555-0900', false, (SELECT id FROM addresses WHERE street1 = '215 Iyannough Rd'));
 
 -- Boston Logan Airport (BOS-LOGAN) - 15 cars
 INSERT INTO cars (type, license_plate, make, model, year, current_branch_id, available) VALUES

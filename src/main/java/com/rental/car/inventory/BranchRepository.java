@@ -12,6 +12,9 @@ interface BranchRepository extends JpaRepository<Branch, Long> {
     
     boolean existsByCode(String code);
 
+    @Query("SELECT b.isAirport FROM Branch b WHERE b.code = :code")
+    Optional<Boolean> isAirportBranch(@Param("code") String code);
+
     List<Branch> findByAddressCityIgnoreCase(String city);
 
     @Query(value = """

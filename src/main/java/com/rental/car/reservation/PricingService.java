@@ -17,15 +17,21 @@ public class PricingService {
 
     private final RatePlanRepository ratePlanRepo;
     private final PricingRuleRepository pricingRuleRepo;
+    private final com.rental.car.inventory.InventoryService inventoryService;
 
     // Fallback rates if no rate plan found
     private static final BigDecimal DEFAULT_DAILY_RATE = new BigDecimal("50.00");
     private static final BigDecimal DEFAULT_WEEKLY_RATE = new BigDecimal("280.00"); // ~20% discount
     private static final String DEFAULT_CURRENCY = "USD";
 
-    public PricingService(RatePlanRepository ratePlanRepo, PricingRuleRepository pricingRuleRepo) {
+    public PricingService(
+            RatePlanRepository ratePlanRepo, 
+            PricingRuleRepository pricingRuleRepo,
+            com.rental.car.inventory.InventoryService inventoryService
+    ) {
         this.ratePlanRepo = ratePlanRepo;
         this.pricingRuleRepo = pricingRuleRepo;
+        this.inventoryService = inventoryService;
     }
 
     /**
@@ -59,6 +65,15 @@ public class PricingService {
         List<PriceCalculationResponse.LineItem> additionalCharges = new ArrayList<>();
         BigDecimal additionalTotal = BigDecimal.ZERO;
 
+        // Airport fee (if pickup is at an airport location)
+        if (inventoryService.isAirportBranch(pickupBranchCode)) {
+            BigDecimal airportFee = getAirportFee();
+            additionalCharges.add(new PriceCalculationResponse.LineItem(
+                "Airport facility fee", airportFee, "FEE"
+            ));
+            additionalTotal = additionalTotal.add(airportFee);
+        }
+
         // One-way fee
         if (!pickupBranchCode.equals(returnBranchCode)) {
             BigDecimal oneWayFee = getOneWayFee();
@@ -70,7 +85,7 @@ public class PricingService {
 
         // Weekend surcharge (if applicable)
         BigDecimal weekendSurcharge = calculateWeekendSurcharge(
-            pickupDate, returnDate, ratePlan.getWeekendMultiplier()
+            pickupDate, returnDate, ratePlan.getDailyRate(), ratePlan.getWeekendMultiplier()
         );
         if (weekendSurcharge.compareTo(BigDecimal.ZERO) > 0) {
             additionalCharges.add(new PriceCalculationResponse.LineItem(
@@ -79,14 +94,45 @@ public class PricingService {
             additionalTotal = additionalTotal.add(weekendSurcharge);
         }
 
-        // 4. Calculate subtotal
+        // 4. Calculate subtotal before discounts
         BigDecimal subtotal = timeCharge.amount().add(additionalTotal);
+
+        // 5. Apply length-based discounts
+        List<PriceCalculationResponse.LineItem> discounts = new ArrayList<>();
+        BigDecimal discountTotal = BigDecimal.ZERO;
+
+        // Monthly discount (30+ days, 18%)
+        if (totalDays >= 30) {
+            BigDecimal monthlyDiscount = calculateLengthDiscount(subtotal, "MONTHLY_DISCOUNT");
+            if (monthlyDiscount.compareTo(BigDecimal.ZERO) > 0) {
+                discounts.add(new PriceCalculationResponse.LineItem(
+                    "Monthly rental discount (30+ days)", monthlyDiscount.negate(), "DISCOUNT"
+                ));
+                discountTotal = discountTotal.add(monthlyDiscount);
+            }
+        }
+        // Weekly discount (7+ days, 12%) - only if not already getting monthly
+        else if (totalDays >= 7) {
+            BigDecimal weeklyDiscount = calculateLengthDiscount(subtotal, "WEEKLY_DISCOUNT");
+            if (weeklyDiscount.compareTo(BigDecimal.ZERO) > 0) {
+                discounts.add(new PriceCalculationResponse.LineItem(
+                    "Weekly rental discount (7+ days)", weeklyDiscount.negate(), "DISCOUNT"
+                ));
+                discountTotal = discountTotal.add(weeklyDiscount);
+            }
+        }
+
+        // Add discounts to additional charges list
+        additionalCharges.addAll(discounts);
+
+        // Recalculate subtotal with discounts
+        subtotal = subtotal.subtract(discountTotal);
 
         // 5. Calculate taxes
         List<PriceCalculationResponse.LineItem> taxes = new ArrayList<>();
         BigDecimal salesTax = calculateSalesTax(subtotal);
         taxes.add(new PriceCalculationResponse.LineItem(
-            "Sales Tax (10%)", salesTax, "TAX"
+            "Sales Tax", salesTax, "TAX"
         ));
         BigDecimal totalTax = salesTax;
 
@@ -136,9 +182,10 @@ public class PricingService {
      * Calculate weekend surcharge based on weekend days in rental period
      */
     private BigDecimal calculateWeekendSurcharge(
-            LocalDate pickupDate, 
-            LocalDate returnDate,
-            BigDecimal weekendMultiplier
+        LocalDate pickupDate, 
+        LocalDate returnDate,
+        BigDecimal dailyRate,
+        BigDecimal weekendMultiplier
     ) {
         if (weekendMultiplier == null || weekendMultiplier.compareTo(BigDecimal.ONE) <= 0) {
             return BigDecimal.ZERO;
@@ -159,8 +206,11 @@ public class PricingService {
             return BigDecimal.ZERO;
         }
 
-        // Apply multiplier only to weekend days
-        return BigDecimal.valueOf(weekendDays * 10).setScale(2, RoundingMode.HALF_UP);
+        // Calculate surcharge: dailyRate * (multiplier - 1.0) * weekendDays
+        BigDecimal uplift = weekendMultiplier.subtract(BigDecimal.ONE);
+        return dailyRate.multiply(uplift)
+                        .multiply(BigDecimal.valueOf(weekendDays))
+                        .setScale(2, RoundingMode.HALF_UP);
     }
 
     /**
@@ -173,10 +223,35 @@ public class PricingService {
     }
 
     /**
+     * Get airport fee from pricing rules or default
+     */
+    private BigDecimal getAirportFee() {
+        return pricingRuleRepo.findByRuleCodeAndActiveTrue("AIRPORT_FEE_LOGAN")
+            .map(PricingRule::getFixedAmount)
+            .orElse(new BigDecimal("25.00"));
+    }
+
+    /**
+     * Calculate length-based discount (weekly, monthly, extended)
+     */
+    private BigDecimal calculateLengthDiscount(BigDecimal amount, String ruleCode) {
+        BigDecimal discountPercentage = pricingRuleRepo.findByRuleCodeAndActiveTrue(ruleCode)
+            .map(PricingRule::getPercentageValue)
+            .orElse(BigDecimal.ZERO);
+
+        if (discountPercentage.compareTo(BigDecimal.ZERO) <= 0) {
+            return BigDecimal.ZERO;
+        }
+
+        return amount.multiply(discountPercentage.divide(new BigDecimal("100"), 4, RoundingMode.HALF_UP))
+            .setScale(2, RoundingMode.HALF_UP);
+    }
+
+    /**
      * Calculate sales tax
      */
     private BigDecimal calculateSalesTax(BigDecimal amount) {
-        BigDecimal taxRate = pricingRuleRepo.findByRuleCodeAndActiveTrue("SALES_TAX")
+        BigDecimal taxRate = pricingRuleRepo.findByRuleCodeAndActiveTrue("MA_SALES_TAX")
             .map(PricingRule::getPercentageValue)
             .orElse(new BigDecimal("10.00"));
 

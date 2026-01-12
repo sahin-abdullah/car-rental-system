@@ -1,6 +1,7 @@
 package com.rental.car.reservation;
 
 import com.rental.car.inventory.CarType;
+import com.rental.car.inventory.InventoryService;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.testng.annotations.BeforeMethod;
@@ -22,6 +23,9 @@ public class PricingServiceTest {
     @Mock
     private PricingRuleRepository pricingRuleRepo;
 
+    @Mock
+    private InventoryService inventoryService;
+
     private PricingService pricingService;
 
     private RatePlan ratePlan;
@@ -29,7 +33,7 @@ public class PricingServiceTest {
     @BeforeMethod
     public void setUp() {
         MockitoAnnotations.openMocks(this);
-        pricingService = new PricingService(ratePlanRepo, pricingRuleRepo);
+        pricingService = new PricingService(ratePlanRepo, pricingRuleRepo, inventoryService);
 
         ratePlan = new RatePlan(
                 1L, "LAX", CarType.SEDAN, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31),
@@ -44,6 +48,7 @@ public class PricingServiceTest {
                 .thenReturn(Optional.of(ratePlan));
         when(pricingRuleRepo.findByRuleCodeAndActiveTrue("SALES_TAX"))
                 .thenReturn(Optional.empty());
+        when(inventoryService.isAirportBranch(anyString())).thenReturn(false);
 
         PriceCalculationResponse result = pricingService.calculatePrice(
                 CarType.SEDAN, "LAX", "LAX",
@@ -64,6 +69,7 @@ public class PricingServiceTest {
                 .thenReturn(Optional.empty());
         when(pricingRuleRepo.findByRuleCodeAndActiveTrue("SALES_TAX"))
                 .thenReturn(Optional.empty());
+        when(inventoryService.isAirportBranch(anyString())).thenReturn(false);
 
         PriceCalculationResponse result = pricingService.calculatePrice(
                 CarType.SEDAN, "LAX", "SFO",
@@ -88,6 +94,7 @@ public class PricingServiceTest {
                 .thenReturn(Optional.empty());
         when(pricingRuleRepo.findByRuleCodeAndActiveTrue("SALES_TAX"))
                 .thenReturn(Optional.empty());
+        when(inventoryService.isAirportBranch(anyString())).thenReturn(false);
 
         PriceCalculationResponse result = pricingService.calculatePrice(
                 CarType.SUV, "NYC", "NYC",
