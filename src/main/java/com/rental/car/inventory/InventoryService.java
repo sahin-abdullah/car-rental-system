@@ -181,7 +181,7 @@ public class InventoryService {
 
     @CacheEvict(value = "carSearch", allEntries = true)
     @Transactional
-    public Car updateCar(Long carId, CarType type, String plate, String make, String model, int year, String branchCode, boolean available) {
+    public Car updateCar(Long carId, CarType type, String plate, String make, String model, int year, String branchCode, Boolean available) {
         Car car = carRepo.findById(carId)
                 .orElseThrow(() -> ResourceNotFoundException.car(carId));
         
@@ -198,7 +198,9 @@ public class InventoryService {
         car.setModel(model);
         car.setYear(year);
         car.setCurrentBranch(branch);
-        car.setAvailable(available);
+        if (available != null) {
+            car.setAvailable(available);
+        }
         
         return carRepo.save(car);
     }

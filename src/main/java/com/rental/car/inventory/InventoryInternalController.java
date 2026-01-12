@@ -5,12 +5,21 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/internal/v1/inventory")
 @Tag(name = "Internal Inventory Management", description = "Internal APIs for managing cars and branches (admin/system use)")
+@Validated
 class InventoryInternalController {
 
     private final InventoryService service;
@@ -23,7 +32,7 @@ class InventoryInternalController {
     @ApiResponse(responseCode = "200", description = "Returns true if branch exists, false otherwise")
     @GetMapping("/branches/{code}/exists")
     public boolean checkBranchExists(
-            @Parameter(description = "Branch code", required = true) @PathVariable String code) {
+            @Parameter(description = "Branch code", required = true) @PathVariable @NotBlank @Size(max = 20) String code) {
         return service.isValidBranch(code);
     }
 
@@ -34,7 +43,7 @@ class InventoryInternalController {
     })
     @GetMapping("/branches/{code}")
     public ResponseEntity<BranchDTO> getBranchByCode(
-            @Parameter(description = "Branch code", required = true) @PathVariable String code) {
+            @Parameter(description = "Branch code", required = true) @PathVariable @NotBlank @Size(max = 20) String code) {
         return service.getBranchByCode(code)
                 .map(BranchDTO::from)
                 .map(ResponseEntity::ok)
@@ -48,7 +57,7 @@ class InventoryInternalController {
     })
     @GetMapping("/cars/{id}")
     public ResponseEntity<CarDTO> getCarById(
-            @Parameter(description = "Car ID", required = true) @PathVariable Long id) {
+            @Parameter(description = "Car ID", required = true) @PathVariable @Positive Long id) {
         return service.getCarById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
@@ -61,8 +70,8 @@ class InventoryInternalController {
     })
     @PostMapping("/cars/{id}/availability")
     public ResponseEntity<Void> updateCarAvailability(
-            @Parameter(description = "Car ID", required = true) @PathVariable Long id,
-            @RequestBody AvailabilityUpdateRequest request
+            @Parameter(description = "Car ID", required = true) @PathVariable @Positive Long id,
+            @RequestBody @Valid AvailabilityUpdateRequest request
     ) {
         service.updateCarAvailability(id, request.available());
         return ResponseEntity.ok().build();
@@ -75,8 +84,8 @@ class InventoryInternalController {
     })
     @PutMapping("/cars/{id}/branch")
     public ResponseEntity<Void> moveCarToBranch(
-            @Parameter(description = "Car ID", required = true) @PathVariable Long id,
-            @RequestBody BranchTransferRequest request
+            @Parameter(description = "Car ID", required = true) @PathVariable @Positive Long id,
+            @RequestBody @Valid BranchTransferRequest request
     ) {
         service.moveCarToBranch(id, request.branchCode());
         return ResponseEntity.ok().build();
@@ -88,7 +97,7 @@ class InventoryInternalController {
         @ApiResponse(responseCode = "409", description = "License plate already exists")
     })
     @PostMapping("/cars")
-    public ResponseEntity<CarDTO> createCar(@RequestBody CarCreateRequest request) {
+    public ResponseEntity<CarDTO> createCar(@RequestBody @Valid CarCreateRequest request) {
         Car car = service.createCar(
             request.type(),
             request.licensePlate(),
@@ -109,8 +118,8 @@ class InventoryInternalController {
     })
     @PutMapping("/cars/{id}")
     public ResponseEntity<CarDTO> updateCar(
-            @Parameter(description = "Car ID", required = true) @PathVariable Long id,
-            @RequestBody CarUpdateRequest request
+            @Parameter(description = "Car ID", required = true) @PathVariable @Positive Long id,
+            @RequestBody @Valid CarUpdateRequest request
     ) {
         Car car = service.updateCar(
             id,
@@ -132,7 +141,7 @@ class InventoryInternalController {
     })
     @DeleteMapping("/cars/{id}")
     public ResponseEntity<Void> deleteCar(
-            @Parameter(description = "Car ID", required = true) @PathVariable Long id) {
+            @Parameter(description = "Car ID", required = true) @PathVariable @Positive Long id) {
         service.deleteCar(id);
         return ResponseEntity.noContent().build();
     }
@@ -143,7 +152,7 @@ class InventoryInternalController {
         @ApiResponse(responseCode = "409", description = "Branch code already exists")
     })
     @PostMapping("/branches")
-    public ResponseEntity<BranchDTO> createBranch(@RequestBody BranchCreateRequest request) {
+    public ResponseEntity<BranchDTO> createBranch(@RequestBody @Valid BranchCreateRequest request) {
         Branch branch = service.createBranchWithDetails(
             request.code(),
             request.name(),
@@ -164,8 +173,8 @@ class InventoryInternalController {
     })
     @PutMapping("/branches/{code}")
     public ResponseEntity<BranchDTO> updateBranch(
-            @Parameter(description = "Branch code", required = true) @PathVariable String code,
-            @RequestBody BranchUpdateRequest request
+            @Parameter(description = "Branch code", required = true) @PathVariable @NotBlank @Size(max = 20) String code,
+            @RequestBody @Valid BranchUpdateRequest request
     ) {
         Branch branch = service.updateBranch(
             code,
@@ -187,53 +196,53 @@ class InventoryInternalController {
     })
     @DeleteMapping("/branches/{code}")
     public ResponseEntity<Void> deleteBranch(
-            @Parameter(description = "Branch code", required = true) @PathVariable String code) {
+            @Parameter(description = "Branch code", required = true) @PathVariable @NotBlank @Size(max = 20) String code) {
         service.deleteBranch(code);
         return ResponseEntity.noContent().build();
     }
 
     record CarCreateRequest(
-        CarType type,
-        String licensePlate,
-        String make,
-        String model,
-        int year,
-        String branchCode,
+        @NotNull CarType type,
+        @NotBlank @Size(max = 20) String licensePlate,
+        @NotBlank @Size(max = 50) String make,
+        @NotBlank @Size(max = 50) String model,
+        @Min(1900) @Max(2100) int year,
+        @NotBlank @Size(max = 20) String branchCode,
         Boolean available
     ) {}
 
     record CarUpdateRequest(
-        CarType type,
-        String licensePlate,
-        String make,
-        String model,
-        int year,
-        String branchCode,
-        boolean available
+        @NotNull CarType type,
+        @NotBlank @Size(max = 20) String licensePlate,
+        @NotBlank @Size(max = 50) String make,
+        @NotBlank @Size(max = 50) String model,
+        @Min(1900) @Max(2100) int year,
+        @NotBlank @Size(max = 20) String branchCode,
+        Boolean available
     ) {}
 
     record BranchCreateRequest(
-        String code,
-        String name,
-        String phoneNumber,
-        String street,
-        String city,
-        String state,
-        String country,
-        String zipCode
+        @NotBlank @Size(max = 20) String code,
+        @NotBlank @Size(max = 100) String name,
+        @NotBlank @Size(max = 30) String phoneNumber,
+        @NotBlank @Size(max = 120) String street,
+        @NotBlank @Size(max = 60) String city,
+        @NotBlank @Size(max = 60) String state,
+        @NotBlank @Size(max = 60) String country,
+        @NotBlank @Size(max = 20) String zipCode
     ) {}
 
     record BranchUpdateRequest(
-        String name,
-        String phoneNumber,
-        String street,
-        String city,
-        String state,
-        String country,
-        String zipCode
+        @NotBlank @Size(max = 100) String name,
+        @NotBlank @Size(max = 30) String phoneNumber,
+        @NotBlank @Size(max = 120) String street,
+        @NotBlank @Size(max = 60) String city,
+        @NotBlank @Size(max = 60) String state,
+        @NotBlank @Size(max = 60) String country,
+        @NotBlank @Size(max = 20) String zipCode
     ) {}
 
     record AvailabilityUpdateRequest(boolean available) {}
 
-    record BranchTransferRequest(String branchCode) {}
+    record BranchTransferRequest(@NotBlank @Size(max = 20) String branchCode) {}
 }

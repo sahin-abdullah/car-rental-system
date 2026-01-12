@@ -79,7 +79,7 @@ interface ReservationRepository extends JpaRepository<Reservation, Long> {
 
     boolean existsByCustomerEmailAndStatusIn(String email, List<ReservationStatus> statuses);
 
-    @Modifying
+    @Modifying(clearAutomatically = true)
     @Query("""
         UPDATE Reservation r 
         SET r.status = :newStatus, r.updatedAt = CURRENT_TIMESTAMP

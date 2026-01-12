@@ -103,12 +103,8 @@ public class ReservationService {
         try {
             return reservationRepo.save(reservation);
         } catch (DataIntegrityViolationException ex) {
-            // DB exclusion constraint rejected overlapping reservation
-            if (ex.getMessage() != null && ex.getMessage().contains("reservations_no_overlap_per_car")) {
-                throw new ReservationConflictException(
-                    "Car is already reserved for the selected dates");
-            }
-            throw ex; // Re-throw if it's a different constraint violation
+            throw new ReservationConflictException(
+                "Car is already reserved for the selected dates");
         }
     }
 
