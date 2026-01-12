@@ -1,5 +1,3 @@
-CREATE EXTENSION IF NOT EXISTS postgis;
-
 -- Create spatial index using GIST (Generalized Search Tree) with geometry type
 CREATE INDEX IF NOT EXISTS idx_address_location 
     ON addresses 
